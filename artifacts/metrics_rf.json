@@ -1,0 +1,19 @@
+{
+  "model": "RandomForestClassifier",
+  "threshold": 0.5,
+  "accuracy": 0.842,
+  "precision": 0.5,
+  "recall": 0.012658227848101266,
+  "f1": 0.024691358024691357,
+  "roc_auc": 0.7686227787967167,
+  "pr_auc": 0.33855066332017225,
+  "confusion_matrix": {
+    "tn": 840,
+    "fp": 2,
+    "fn": 156,
+    "tp": 2
+  },
+  "n_train": 4000,
+  "n_test": 1000,
+  "n_total": 5000
+}

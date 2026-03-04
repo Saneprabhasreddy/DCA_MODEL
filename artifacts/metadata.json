@@ -1,0 +1,60 @@
+{
+  "features": [
+    "region",
+    "industry",
+    "invoice_amount_usd",
+    "num_open_invoices",
+    "overdue_days_at_allocation",
+    "previous_default_count",
+    "previous_recovery_rate",
+    "payment_history_score",
+    "credit_score_band",
+    "contact_attempts_last_30d",
+    "last_contact_channel",
+    "dispute_flag",
+    "promised_to_pay_flag",
+    "assigned_dca_id",
+    "sla_days"
+  ],
+  "categorical": [
+    "region",
+    "industry",
+    "credit_score_band",
+    "last_contact_channel",
+    "assigned_dca_id"
+  ],
+  "numeric": [
+    "invoice_amount_usd",
+    "num_open_invoices",
+    "overdue_days_at_allocation",
+    "previous_default_count",
+    "previous_recovery_rate",
+    "payment_history_score",
+    "contact_attempts_last_30d",
+    "dispute_flag",
+    "promised_to_pay_flag",
+    "sla_days"
+  ],
+  "targets": {
+    "classification": "recovered_within_60d",
+    "amount": "recovered_amount_usd",
+    "days": "recovery_days_from_allocation"
+  },
+  "metrics": {
+    "clf_roc_auc": 0.7553218677651162,
+    "clf_pr_auc": 0.31315646586943224,
+    "clf_accuracy": 0.824,
+    "clf_precision": 0.36363636363636365,
+    "clf_recall": 0.1518987341772152,
+    "tn": 800,
+    "fp": 42,
+    "fn": 134,
+    "tp": 24,
+    "threshold": 0.5,
+    "reg_amount_mae": 1023.3783557592063,
+    "reg_days_mae": 7.023810214887451,
+    "n_rows": 5000,
+    "n_train": 4000,
+    "n_test": 1000
+  }
+}
