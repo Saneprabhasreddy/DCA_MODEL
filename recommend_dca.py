@@ -107,7 +107,8 @@ def main():
     reg_amt = load(os.path.join(args.artifacts_dir, "model_recovery_amount.joblib"))
     reg_days = load(os.path.join(args.artifacts_dir, "model_recovery_days.joblib"))
 
-    case = json.loads(args.input_json)
+    with open(args.input_json) as f:
+        case = json.load(f)
 
     # Fill required keys with defaults if missing
     for c in CAT_COLS:
