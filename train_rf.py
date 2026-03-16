@@ -35,11 +35,12 @@ from sklearn.metrics import (
     roc_auc_score,
     average_precision_score,
     confusion_matrix,
+    mean_absolute_error,
 )
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingRegressor
 
 
 TARGET = "recovered_within_60d"
@@ -136,13 +137,41 @@ def main():
         min_samples_leaf=1,
     )
 
-    pipe = Pipeline(steps=[("preprocess", build_preprocess()), ("model", rf)])
-    pipe.fit(X_train, y_train)
+    clf_pipe = Pipeline(steps=[("preprocess", build_preprocess()), ("model", rf)])
+    clf_pipe.fit(X_train, y_train)
 
-    proba = pipe.predict_proba(X_test)[:, 1]
+    proba = clf_pipe.predict_proba(X_test)[:, 1]
     y_pred = (proba >= args.threshold).astype(int)
 
-    # Metrics
+    # Train regressors
+    if "recovered_flag" not in df.columns:
+        recovered_mask = df["recovery_days_from_allocation"].notna()
+    else:
+        recovered_mask = df["recovered_flag"].astype(int) == 1
+
+    reg_data = df.loc[recovered_mask].copy()
+    if len(reg_data) < 200:
+        reg_data = df.copy()
+
+    Xr = reg_data[FEATURES].copy()
+    y_amt = reg_data.get("recovered_amount_usd", pd.Series([0.0] * len(reg_data))).astype(float)
+    y_days = reg_data.get("recovery_days_from_allocation", pd.Series([0.0] * len(reg_data))).astype(float)
+
+    Xr_train, Xr_test, ya_train, ya_test = train_test_split(Xr, y_amt, test_size=0.2, random_state=args.random_state)
+    Xd_train, Xd_test, yd_train, yd_test = train_test_split(Xr, y_days, test_size=0.2, random_state=args.random_state)
+
+    amt_pipe = Pipeline(steps=[("preprocess", build_preprocess()), ("model", HistGradientBoostingRegressor(random_state=args.random_state, max_depth=6, learning_rate=0.08, max_iter=300))])
+    days_pipe = Pipeline(steps=[("preprocess", build_preprocess()), ("model", HistGradientBoostingRegressor(random_state=args.random_state, max_depth=6, learning_rate=0.08, max_iter=300))])
+
+    amt_pipe.fit(Xr_train, ya_train)
+    days_pipe.fit(Xd_train, yd_train)
+
+    pred_amt = amt_pipe.predict(Xr_test)
+    pred_days = days_pipe.predict(Xd_test)
+
+    mae_amt = float(mean_absolute_error(ya_test, pred_amt))
+    mae_days = float(mean_absolute_error(yd_test, pred_days))
+
     tn, fp, fn, tp = confusion_matrix(y_test, y_pred).ravel()
 
     metrics = {
@@ -158,22 +187,32 @@ def main():
         "n_train": int(len(X_train)),
         "n_test": int(len(X_test)),
         "n_total": int(len(df)),
+        "reg_amount_mae": mae_amt,
+        "reg_days_mae": mae_days,
     }
 
-    # Save artifacts
-    dump(pipe, os.path.join(args.artifacts_dir, "rf_model.joblib"))
-    with open(os.path.join(args.artifacts_dir, "metrics_rf.json"), "w") as f:
-        json.dump(metrics, f, indent=2)
+    # Save unified artifacts
+    dump(clf_pipe, os.path.join(args.artifacts_dir, "model_recovery_prob.joblib"))
+    dump(amt_pipe, os.path.join(args.artifacts_dir, "model_recovery_amount.joblib"))
+    dump(days_pipe, os.path.join(args.artifacts_dir, "model_recovery_days.joblib"))
+
+    meta = {
+        "features": FEATURES,
+        "categorical": CAT_COLS,
+        "numeric": [c for c in FEATURES if c not in CAT_COLS],
+        "metrics": metrics,
+    }
+    with open(os.path.join(args.artifacts_dir, "metadata.json"), "w") as f:
+        json.dump(meta, f, indent=2)
 
     out = pd.DataFrame({"actual": y_test.values, "pred_prob": proba, "predicted": y_pred})
     out.to_csv(os.path.join(args.artifacts_dir, "test_predictions_rf.csv"), index=False)
 
-    print("\n✅ Random Forest training complete\n")
+    print("\n✅ Random Forest training (with regressors) complete\n")
     print("Confusion Matrix (rows=Actual, cols=Predicted):")
     print("            Pred=0    Pred=1")
     print(f"Actual=0     {tn:5d}     {fp:5d}")
     print(f"Actual=1     {fn:5d}     {tp:5d}")
-
     print("\nMetrics:")
     print(f"Accuracy  : {metrics['accuracy']:.4f}")
     print(f"Precision : {metrics['precision']:.4f}")
@@ -181,11 +220,13 @@ def main():
     print(f"F1-score  : {metrics['f1']:.4f}")
     print(f"ROC-AUC   : {metrics['roc_auc']:.4f}")
     print(f"PR-AUC    : {metrics['pr_auc']:.4f}")
-
+    print(f"Recovered Amount MAE = {mae_amt:.2f}")
+    print(f"Recovery Days MAE    = {mae_days:.2f}")
     print("\nSaved:")
-    print(f"- {args.artifacts_dir}/rf_model.joblib")
-    print(f"- {args.artifacts_dir}/metrics_rf.json")
-    print(f"- {args.artifacts_dir}/test_predictions_rf.csv")
+    print(f"- {args.artifacts_dir}/model_recovery_prob.joblib")
+    print(f"- {args.artifacts_dir}/model_recovery_amount.joblib")
+    print(f"- {args.artifacts_dir}/model_recovery_days.joblib")
+    print(f"- {args.artifacts_dir}/metadata.json")
 
 
 if __name__ == "__main__":

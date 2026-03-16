@@ -41,6 +41,35 @@ def main():
         ("HistGradientBoosting", args.hgb),
     ]
 
+    # ---------- Combined ROC + PR in one figure ----------
+    fig, (ax_roc, ax_pr) = plt.subplots(1, 2, figsize=(13, 5))
+    for name, path in models:
+        y_true, y_prob = load_preds(path)
+
+        fpr, tpr, _ = roc_curve(y_true, y_prob)
+        auc = roc_auc_score(y_true, y_prob)
+        ax_roc.plot(fpr, tpr, label=f"{name} (AUC={auc:.4f})")
+
+        precision, recall, _ = precision_recall_curve(y_true, y_prob)
+        ap_score = average_precision_score(y_true, y_prob)
+        ax_pr.plot(recall, precision, label=f"{name} (AP={ap_score:.4f})")
+
+    ax_roc.plot([0, 1], [0, 1], linestyle="--")
+    ax_roc.set_title("ROC Curve Comparison")
+    ax_roc.set_xlabel("False Positive Rate")
+    ax_roc.set_ylabel("True Positive Rate")
+    ax_roc.legend()
+
+    ax_pr.set_title("Precision-Recall Curve Comparison")
+    ax_pr.set_xlabel("Recall")
+    ax_pr.set_ylabel("Precision")
+    ax_pr.legend()
+
+    fig.tight_layout()
+    both_path = os.path.join(args.out_dir, "roc_pr_compare.png")
+    fig.savefig(both_path, dpi=200)
+    plt.close(fig)
+
     # ---------- Combined ROC ----------
     fig = plt.figure()
     for name, path in models:
@@ -77,6 +106,7 @@ def main():
     plt.close(fig)
 
     print("✅ Saved combined plots:")
+    print(" -", both_path)
     print(" -", roc_path)
     print(" -", pr_path)
 

@@ -1,0 +1,11 @@
+# Minimal requirements for SmartDCA
+# Python 3.10+ recommended
+numpy>=1.21
+pandas>=1.5
+scikit-learn>=1.1
+joblib>=1.1
+matplotlib>=3.4
+scipy>=1.7
+
+# Optional (for nicer plots)
+seaborn>=0.11

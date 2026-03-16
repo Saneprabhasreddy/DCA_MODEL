@@ -1,4 +1,4 @@
-#!/Users/dspl_012/Downloads/smartdca_ml_only/.venv/bin/python
+#!/Users/dspl_012/Downloads/smartdca_ml_logireg/.venv/bin/python3.14
 import sys
 from numpy._configtool import main
 if __name__ == '__main__':
