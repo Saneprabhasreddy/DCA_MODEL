@@ -202,7 +202,7 @@ def main():
     reg_amt = load(os.path.join(args.artifacts_dir, "model_recovery_amount.joblib"))
     reg_days = load(os.path.join(args.artifacts_dir, "model_recovery_days.joblib"))
 
-    # Load case
+    # Load case (support either --input_json or --input_file)
     case = load_case(args)
 
     # Fill required categorical defaults
